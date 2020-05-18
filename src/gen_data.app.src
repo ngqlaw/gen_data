@@ -1,0 +1,16 @@
+{application, gen_data, [
+    {description, "gen data from excel"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        bbmustache,
+        tools
+    ]},
+    {env,[]},
+    {modules, []},
+
+    {licenses, ["Apache 2.0"]},
+    {links, []}
+]}.
