@@ -2,7 +2,7 @@
 [{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.9.0">>},0},
  {<<"tools">>,
   {git,"https://github.com/ngqlaw/tools.git",
-       {ref,"77f300c0e2fc3629f7ec86df1588deed670df4fe"}},
+       {ref,"a1f2a4423866ed5281ff773c0e7e3cd28135b6cc"}},
   0}]}.
 [
 {pkg_hash,[

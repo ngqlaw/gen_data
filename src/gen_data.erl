@@ -8,6 +8,7 @@
 
 -export([main/1]).
 
+-include("gen_data.hrl").
 -include_lib("tools/include/excel.hrl").
 -include_lib("tools/include/util.hrl").
 
@@ -18,106 +19,61 @@
       OtherSheets :: term(),
       DataInfo :: map()).
 
-main(_) ->
-    io:format("===========Start gen data!===========~n"),
+-define(DEFAULT_ARGS, ["_build", "default"]).
+
+main(reload) ->
+    do_main(?DEFAULT_ARGS, reload);
+main([]) ->
+    main(?DEFAULT_ARGS);
+main(Args) ->
+    do_main(Args, escript).
+
+do_main(Args, Mode) ->
+    ?INFO("===========Start gen data!===========~n"),
     [begin
         try
-            io:format("try gen data by ~p......~n", [Module]),
+            ?INFO("try gen data by ~p......~n", [Module]),
             {ok, #{
                 source := InputPath,
                 template := TemplatePath,
                 data := OutputPath
             }} = Module:init(),
-            io:format("init ok!~n"),
+            ?INFO("init ok!~n"),
             {ok, Sheets} = lib_excel:open(InputPath),
             SheetInfo = data_info(Sheets, []),
-            io:format("parse ok!~n"),
+            ?INFO("parse ok!~n"),
             DataInfo = Module:translate(SheetInfo),
             Template = bbmustache:parse_file(TemplatePath),
             Content = bbmustache:compile(Template, DataInfo),
-            file:write_file(OutputPath, Content),
-            io:format("done!~n")
+            case Mode of
+                reload ->
+                    rl:load_from_source_bin(?LIST(Content));
+                _ ->
+                    file:write_file(OutputPath, Content)
+            end,
+            ?INFO("done!~n")
         catch
             E:R ->
-                io:format("~p:~p~n", [E, R])
+                ?INFO("~p:~p~n", [E, R])
         end
-    end || Module <- get_callback_mod()],
-    io:format("===========Finish gen data!===========~n"),
+    end || {Module, _} <- get_callback_mod(Args)],
+    ?INFO("===========Finish gen data!===========~n"),
     ok.
 
 
 %% 数据转换执行模块
-get_callback_mod() ->
+get_callback_mod(Args) ->
     {ok, Path} = file:get_cwd(),
-    L = find_by_dir([Path], []),
-    AddPaths = find_ebin_by_dir([Path], []),
+    AddPaths = rl:find_ebin_by_dir([filename:join([Path|Args])]),
     code:add_paths(AddPaths),
+    L = rl:get_beam_file(AddPaths),
     lists:filter(fun is_callback_mod/1, L).
 
-is_callback_mod(Module) ->
+is_callback_mod({Module, _}) ->
     _Res = code:ensure_loaded(Module),
     Info = Module:module_info(attributes),
     lists:member({gen_data, [true]}, Info).
 
-find_ebin_by_dir([Dir|T], Res) ->
-    case file:list_dir(Dir) of
-        {ok, L} ->
-            NewRes = do_find_ebin_by_dir(L, Dir, Res),
-            find_ebin_by_dir(T, NewRes);
-        _E ->
-            find_ebin_by_dir(T, Res)
-    end;
-find_ebin_by_dir([], Res) ->
-    Res.
-
-do_find_ebin_by_dir(["ebin"|T], Dir, Res) ->
-    SubDir = filename:join([Dir, "ebin"]),
-    case filelib:is_dir(SubDir) of
-        true ->
-            do_find_ebin_by_dir(T, Dir, [SubDir|Res]);
-        false ->
-            do_find_ebin_by_dir(T, Dir, Res)
-    end;
-do_find_ebin_by_dir([H|T], Dir, Res) ->
-    SubDir = filename:join([Dir, H]),
-    case filelib:is_dir(SubDir) of
-        true ->
-            NewRes = find_ebin_by_dir([SubDir], Res),
-            do_find_ebin_by_dir(T, Dir, NewRes);
-        false ->
-            do_find_ebin_by_dir(T, Dir, Res)
-    end;
-do_find_ebin_by_dir([], _Dir, Res) ->
-    Res.
-
-find_by_dir([Dir|T], Res) ->
-    case file:list_dir(Dir) of
-        {ok, L} ->
-            NewRes = do_find_by_dir(L, Dir, Res),
-            find_by_dir(T, NewRes);
-        _E ->
-            find_by_dir(T, Res)
-    end;
-find_by_dir([], Res) ->
-    Res.
-
-do_find_by_dir([H|T], Dir, Res) ->
-    case filename:extension(H) == ".beam" of
-        true ->
-            Module = ?ATOM(filename:basename(H, ".beam")),
-            do_find_by_dir(T, Dir, [Module|Res]);
-        false ->
-            SubDir = filename:join([Dir, H]),
-            case filelib:is_dir(SubDir) of
-                true ->
-                    NewRes = find_by_dir([SubDir], Res),
-                    do_find_by_dir(T, Dir, NewRes);
-                false ->
-                    do_find_by_dir(T, Dir, Res)
-            end
-    end;
-do_find_by_dir([], _Dir, Res) ->
-    Res.
 
 %% 文件信息
 data_info([#excel_sheet{name = SheetName, content = Info}|T], Res) ->
