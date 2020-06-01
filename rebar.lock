@@ -1,8 +1,8 @@
 {"1.2.0",
 [{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.9.0">>},0},
- {<<"tools">>,
+ {<<"noisy_tools">>,
   {git,"https://github.com/ngqlaw/tools.git",
-       {ref,"a1f2a4423866ed5281ff773c0e7e3cd28135b6cc"}},
+       {ref,"17635b531d001d37abaa3ed25779028207db696b"}},
   0}]}.
 [
 {pkg_hash,[
